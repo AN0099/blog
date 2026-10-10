@@ -4,7 +4,7 @@ theme = "hugo-bearblog"
 title = "Bridle Works"
 author = "Aidan Naveja"
 copyright = "Copyright © 2026, Aidan Naveja."
-languageCode = "en-US"
+locale = "en-US"
 
 enableRobotsTXT = true
 
