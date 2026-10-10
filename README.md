@@ -1,6 +1,6 @@
 # Bridle Works dev blog
 
-[![Netlify Status](https://api.netlify.com/api/v1/badges/1c98f5a9-4861-41c6-b56e-6157c4e051ae/deploy-status)](https://app.netlify.com/sites/dndns/deploys)
+[![Netlify Status](https://api.netlify.com/api/v1/badges/13893d4c-0fe0-4f19-a060-c2a6f7a193d9/deploy-status)](https://app.netlify.com/sites/bridleworks/deploys)
 
 Source for [blog.naveja.us](https://blog.naveja.us/), the development blog of
 Bridle Works and AN0099. Hugo with the hugo-bearblog theme (a git submodule),
