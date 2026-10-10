@@ -4,8 +4,6 @@ title = "Bridle Works"
 
 {{< logo >}}
 
-## Bridle Works
-
 The development blog of Bridle Works, published as
 [AN0099](https://github.com/AN0099) and written by Aidan Naveja.
 
