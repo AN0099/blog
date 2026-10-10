@@ -5,8 +5,6 @@ description = "What Toothpaste Kit is, and the principles it is built on."
 tags = ["toothpaste-kit", "agents", "verification"]
 +++
 
-# Introducing Toothpaste Kit
-
 [Toothpaste Kit](https://github.com/AN0099/toothpaste-kit) is the first Bridle
 Works project. It is a skill library, an agent relay protocol, and a set of
 mechanical gates for running multi-agent work with a person in charge of it.
