@@ -2,9 +2,7 @@
 title = "Bridle Works"
 +++
 
-{{< figure src="/images/bridle-works-logo.png" width="360" alt="Bridle Works logo: a galloping horse and rider, traced from Eadweard Muybridge's 1878 photographs The Horse in Motion, above the name BRIDLE WORKS" >}}
-
-## Bridle Works
+{{< logo >}}
 
 The development blog of Bridle Works, published as
 [AN0099](https://github.com/AN0099) and written by Aidan Naveja.

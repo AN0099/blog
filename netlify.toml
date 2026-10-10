@@ -1,0 +1,9 @@
+# Netlify reads this before its site settings. Hugo is not preinstalled on
+# Netlify's current build image, so the version is pinned here; this tree was
+# built locally with the same version before it was pinned.
+[build]
+  command = "hugo --gc --minify"
+  publish = "public"
+
+[build.environment]
+  HUGO_VERSION = "0.167.0"
