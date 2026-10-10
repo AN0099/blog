@@ -5,8 +5,6 @@ description = "Hugo, a theme as a git submodule, and Netlify building on every p
 tags = ["hugo", "netlify", "static-site"]
 +++
 
-# How this site is built
-
 The setup is carried over from the personal blog this site replaced. It has
 worked without attention since 2024, which is the best thing a blog's
 plumbing can do.
