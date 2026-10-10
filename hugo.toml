@@ -1,0 +1,22 @@
+baseURL = "https://blog.naveja.us/"
+theme = "hugo-bearblog"
+
+title = "Bridle Works"
+author = "Aidan Naveja"
+copyright = "Copyright © 2026, Aidan Naveja."
+languageCode = "en-US"
+
+enableRobotsTXT = true
+
+# Bear Blog style URLs: no taxonomy pages, posts at /<slug>/.
+disableKinds = ["taxonomy"]
+ignoreErrors = ["error-disable-taxonomy"]
+[permalinks]
+  blog = "/:slug/"
+  tags = "/blog/:slug"
+
+[params]
+  description = "The development blog of Bridle Works and AN0099: tools for running multi-agent work with a person in charge of it."
+  title = "Bridle Works"
+  dateFormat = "2006-01-02"
+  images = ["images/share.png"]
