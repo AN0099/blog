@@ -42,8 +42,28 @@ printf '<rss version="2.0"><channel><title>x</title>' >"$work/broken.xml"
 expect fail "unparseable feed refused" -- env FEED_FILE="$work/broken.xml" "$gates" feed
 printf '<html><body/></html>' >"$work/html.xml"
 expect fail "non-RSS document refused" -- env FEED_FILE="$work/html.xml" "$gates" feed
-printf '<rss version="2.0"><channel><title>x</title></channel></rss>' >"$work/good.xml"
-expect pass "well-formed RSS accepted" -- env FEED_FILE="$work/good.xml" "$gates" feed
+printf '<rss version="2.0"><channel><title>x</title></channel></rss>' >"$work/empty.xml"
+expect fail "feed with no items refused" -- env FEED_FILE="$work/empty.xml" "$gates" feed
+# A built post page and feeds that point at it, served from $work/pub.
+pub=$work/pub
+mkdir -p "$pub/a-post"
+printf '<html><body><h1>A post</h1><content><p>First paragraph.</p>\n<p>Second, with <a href="https://blog.example/b/">a link</a> and <img src="https://blog.example/i.png" alt="i">.</p></content></body></html>' >"$pub/a-post/index.html"
+feed() { # feed FILE DESCRIPTION-MARKUP (already XML-escaped)
+  printf '<rss version="2.0"><channel><title>x</title><item><title>A post</title><link>https://blog.example/a-post/</link><description>%s</description></item></channel></rss>' "$2" >"$1"
+}
+feed "$work/summary.xml" '&lt;p&gt;First paragraph.&lt;/p&gt;'
+expect fail "summary-only item refused" -- env FEED_PUBLIC="$pub" FEED_FILE="$work/summary.xml" "$gates" feed
+feed "$work/relative.xml" '&lt;p&gt;First paragraph.&lt;/p&gt;&lt;p&gt;Second, with &lt;a href="/b/"&gt;a link&lt;/a&gt; and &lt;img src="/i.png" alt="i"&gt;.&lt;/p&gt;'
+expect fail "root-relative links refused" -- env FEED_PUBLIC="$pub" FEED_FILE="$work/relative.xml" "$gates" feed
+feed "$work/orphan.xml" '&lt;p&gt;x&lt;/p&gt;'
+sed 's#/a-post/#/no-such-post/#' "$work/orphan.xml" >"$work/orphan2.xml"
+expect fail "item without a rendered page refused" -- env FEED_PUBLIC="$pub" FEED_FILE="$work/orphan2.xml" "$gates" feed
+feed "$work/good.xml" '&lt;p&gt;First paragraph.&lt;/p&gt;&lt;p&gt;Second, with &lt;a href="https://blog.example/b/"&gt;a link&lt;/a&gt; and &lt;img src="https://blog.example/i.png" alt="i"&gt;.&lt;/p&gt;'
+expect pass "full-content feed accepted" -- env FEED_PUBLIC="$pub" FEED_FILE="$work/good.xml" "$gates" feed
+cp "$work/good.xml" "$pub/index.xml"; mkdir -p "$pub/blog"; cp "$work/good.xml" "$pub/blog/index.xml"
+expect pass "default feeds (/index.xml, /blog/index.xml) accepted" -- env FEED_PUBLIC="$pub" "$gates" feed
+cp "$work/summary.xml" "$pub/blog/index.xml"
+expect fail "summary-only /blog/index.xml refused" -- env FEED_PUBLIC="$pub" "$gates" feed
 
 echo "suite: gate no-theme-edit"
 expect pass "pinned, clean theme accepted" -- "$gates" no-theme-edit
@@ -77,7 +97,7 @@ if "$gates" ensure-hugo >"$work/hugo.out" 2>&1; then
   mkdir -p "$site"
   git ls-files --recurse-submodules -z | xargs -0 tar -cf - | tar -xf - -C "$site"
   expect pass "site builds" -- env SITE_DIR="$site" "$gates" build
-  expect pass "built feed accepted" -- env SITE_DIR="$site" "$gates" feed
+  expect pass "built feeds are full-content" -- env SITE_DIR="$site" "$gates" feed
   cp "$site/layouts/index.html" "$work/index.html.bak"
   echo '{{ end }}{{ end }}' >>"$site/layouts/index.html"
   expect fail "broken template refused" -- env SITE_DIR="$site" "$gates" build

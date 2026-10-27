@@ -20,3 +20,13 @@ ignoreErrors = ["error-disable-taxonomy"]
   title = "Bridle Works"
   dateFormat = "2006-01-02"
   images = ["images/share.png"]
+
+# Feed author: name only, shown as <dc:creator> on each item. No email is
+# published, so the feed has no managingEditor, webMaster or <author>.
+[params.author]
+  name = "Aidan Naveja"
+
+# Every post goes in every feed (-1 is unlimited; set explicitly, see
+# layouts/_default/rss.xml).
+[services.rss]
+  limit = -1

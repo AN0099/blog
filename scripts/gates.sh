@@ -10,13 +10,16 @@
 # Gates:
 #   branch-name    scripts/check-branch-name "$BRANCH" (default: current branch)
 #   build          hugo --gc --minify at the version pinned in netlify.toml
-#   feed           public/index.xml exists and parses as an RSS document
+#   feed           public/index.xml and public/blog/index.xml parse as RSS and
+#                  every item carries the full post, with absolute links
 #   no-theme-edit  themes/hugo-bearblog is clean and its gitlink is THEME_PIN
 #
 # Environment (mostly for tests/run; none needed in normal use):
 #   BRANCH             name to check instead of the current branch
 #   SITE_DIR           site to build (default: the repository root)
-#   FEED_FILE          feed to check (default: $SITE_DIR/public/index.xml)
+#   FEED_FILE          single feed to check (default: the two feeds above)
+#   FEED_PUBLIC        built site the feed's item links resolve into
+#                      (default: $SITE_DIR/public)
 #   HUGO_VERSION       version to require (default: read from netlify.toml)
 #   HUGO_CACHE         where the pinned Hugo is unpacked
 #                      (default: ${TMPDIR:-/tmp}/hugo-<version>)
@@ -94,17 +97,76 @@ gate_build() {
 }
 
 gate_feed() {
-  feed=${FEED_FILE:-$SITE_DIR/public/index.xml}
-  if [ ! -s "$feed" ]; then err "feed $feed is missing or empty (run the build gate first)"; return 1; fi
-  python3 - "$feed" <<'EOF'
-import sys
+  public=${FEED_PUBLIC:-$SITE_DIR/public}
+  if [ -n "${FEED_FILE:-}" ]; then
+    set -- "$FEED_FILE"
+  else
+    set -- "$public/index.xml" "$public/blog/index.xml"
+  fi
+  for feed in "$@"; do
+    if [ ! -s "$feed" ]; then err "feed $feed is missing or empty (run the build gate first)"; return 1; fi
+  done
+  python3 -I - "$public" "$@" <<'EOF'
+# Each feed must parse as RSS and carry full content: every item's
+# <description> holds the whole rendered post (the text of the post page's
+# <content> element) and no root-relative src="/ or href="/ links, which a
+# feed reader would resolve against the wrong host.
+import os, re, sys
 import xml.etree.ElementTree as ET
-try:
-    root = ET.parse(sys.argv[1]).getroot()
-except ET.ParseError as e:
-    sys.exit("gates: feed does not parse: %s" % e)
-if root.tag != "rss" or root.find("channel") is None:
-    sys.exit("gates: feed is not an RSS document with a <channel>")
+from html.parser import HTMLParser
+from urllib.parse import urlparse
+
+class ContentText(HTMLParser):
+    """Collects the text inside <content>...</content>."""
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.depth, self.parts = 0, []
+    def handle_starttag(self, tag, attrs):
+        if tag == "content": self.depth += 1
+    def handle_endtag(self, tag):
+        if tag == "content" and self.depth: self.depth -= 1
+    def handle_data(self, data):
+        if self.depth: self.parts.append(data)
+
+def text_of(markup):
+    # Text only, whitespace dropped, so minified and unminified renderings
+    # of the same body compare equal.
+    p = ContentText(); p.feed(markup); p.close()
+    return re.sub(r"\s+", "", "".join(p.parts))
+
+public, feeds = sys.argv[1], sys.argv[2:]
+bad = []
+for feed in feeds:
+    try:
+        root = ET.parse(feed).getroot()
+    except ET.ParseError as e:
+        sys.exit("gates: %s does not parse: %s" % (feed, e))
+    channel = root.find("channel")
+    if root.tag != "rss" or channel is None:
+        sys.exit("gates: %s is not an RSS document with a <channel>" % feed)
+    items = channel.findall("item")
+    if not items:
+        bad.append("%s: no items" % feed)
+    for item in items:
+        link = (item.findtext("link") or "").strip()
+        desc = item.findtext("description") or ""
+        where = "%s: item %s" % (feed, link or "(no link)")
+        if re.search(r'(src|href)="/(?!/)', desc):
+            bad.append("%s: root-relative src or href in description" % where)
+        page = os.path.join(public, urlparse(link).path.lstrip("/"))
+        if page.endswith("/") or os.path.isdir(page):
+            page = os.path.join(page, "index.html")
+        if not os.path.isfile(page):
+            bad.append("%s: rendered page %s not found" % (where, page))
+            continue
+        with open(page, encoding="utf-8") as f:
+            body = text_of(f.read())
+        if not body:
+            bad.append("%s: %s has no <content> text" % (where, page))
+        elif body not in text_of("<content>" + desc + "</content>"):
+            bad.append("%s: description is not the full post (summary only?)" % where)
+if bad:
+    sys.exit("gates: feed is not full-content:\n  " + "\n  ".join(bad))
 EOF
 }
 
