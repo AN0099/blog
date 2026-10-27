@@ -1,9 +1,94 @@
 #!/bin/sh
-# The test suite: the branch-name rule, then the agent guard's cases.
-# Phase 2 adds planted-failure suites for scripts/gates.sh here.
+# The test suite. First the branch-name rule and the agent guard's cases, then
+# one suite per gate in scripts/gates.sh: plant a failure, expect the gate to
+# fail, restore, expect it to pass. A gate that cannot be shown failing is not
+# trusted to pass.
+#
+# The build suite needs the pinned Hugo. Where it cannot be fetched (an
+# offline sandbox) the suite is skipped with a notice, unless REQUIRE_HUGO=1,
+# which CI sets so a skip there is a failure.
 cd "$(dirname "$0")/.." || exit 1
+top=$(pwd)
+gates=$top/scripts/gates.sh
 fail=0
+work=$(mktemp -d) || exit 1
+cleanup() {
+  rm -f "$top/themes/hugo-bearblog/.planted-by-tests-run"
+  rm -rf "$work"
+}
+trap cleanup EXIT INT TERM
+
+ok()  { echo "  ok: $*"; }
+bad() { echo "  FAILED: $*"; fail=1; }
+# expect pass|fail DESCRIPTION -- COMMAND...
+expect() {
+  want=$1 what=$2; shift 3
+  if "$@" >"$work/out" 2>&1; then got=pass; else got=fail; fi
+  if [ "$got" = "$want" ]; then ok "$what ($want)"; else bad "$what: expected $want, got $got"; sed 's/^/    /' "$work/out"; fi
+}
+
+echo "suite: branch-name rule"
 ./scripts/check-branch-name --selftest || fail=1
+echo "suite: agent guard"
 ./scripts/check-branch-guard || fail=1
+
+echo "suite: gate branch-name"
+expect fail "task-slug branch refused" -- env BRANCH=local/blog-acmm-first-pass "$gates" branch-name
+expect pass "allowed branch accepted" -- env BRANCH=acmm/gates "$gates" branch-name
+
+echo "suite: gate feed"
+expect fail "missing feed refused" -- env FEED_FILE="$work/none.xml" "$gates" feed
+printf '<rss version="2.0"><channel><title>x</title>' >"$work/broken.xml"
+expect fail "unparseable feed refused" -- env FEED_FILE="$work/broken.xml" "$gates" feed
+printf '<html><body/></html>' >"$work/html.xml"
+expect fail "non-RSS document refused" -- env FEED_FILE="$work/html.xml" "$gates" feed
+printf '<rss version="2.0"><channel><title>x</title></channel></rss>' >"$work/good.xml"
+expect pass "well-formed RSS accepted" -- env FEED_FILE="$work/good.xml" "$gates" feed
+
+echo "suite: gate no-theme-edit"
+expect pass "pinned, clean theme accepted" -- "$gates" no-theme-edit
+touch "$top/themes/hugo-bearblog/.planted-by-tests-run"
+expect fail "edited theme refused" -- "$gates" no-theme-edit
+rm -f "$top/themes/hugo-bearblog/.planted-by-tests-run"
+expect pass "restored theme accepted" -- "$gates" no-theme-edit
+
+echo "suite: ensure-hugo"
+# A fake release served from file://, so no network is needed.
+rel=$work/rel/v0.0.1
+mkdir -p "$rel" "$work/pkg"
+printf '#!/bin/sh\necho "hugo v0.0.1-test+extended linux/amd64"\n' >"$work/pkg/hugo"
+chmod +x "$work/pkg/hugo"
+case "$(uname -m)" in aarch64|arm64) plat=linux-arm64 ;; *) plat=linux-amd64 ;; esac
+asset=hugo_extended_0.0.1_$plat.tar.gz
+tar -czf "$rel/$asset" -C "$work/pkg" hugo
+echo "0000000000000000000000000000000000000000000000000000000000000000  $asset" >"$rel/hugo_0.0.1_checksums.txt"
+fake() { env HUGO_VERSION=0.0.1 HUGO_RELEASES_URL="file://$work/rel" HUGO_CACHE="$work/cache-$1" "$gates" ensure-hugo; }
+expect fail "checksum mismatch refused" -- fake bad
+if [ -e "$work/cache-bad/hugo" ]; then bad "mismatched binary was unpacked"; else ok "mismatched binary not unpacked"; fi
+(cd "$rel" && sha256sum "$asset") >"$rel/hugo_0.0.1_checksums.txt"
+expect pass "matching checksum installs" -- fake good
+if [ -x "$work/cache-good/hugo" ]; then ok "binary unpacked into cache"; else bad "binary missing from cache"; fi
+
+echo "suite: gate build"
+if "$gates" ensure-hugo >"$work/hugo.out" 2>&1; then
+  # Build a copy of the tracked tree, theme included, so the planted break
+  # never touches the real checkout.
+  site=$work/site
+  mkdir -p "$site"
+  git ls-files --recurse-submodules -z | xargs -0 tar -cf - | tar -xf - -C "$site"
+  expect pass "site builds" -- env SITE_DIR="$site" "$gates" build
+  expect pass "built feed accepted" -- env SITE_DIR="$site" "$gates" feed
+  cp "$site/layouts/index.html" "$work/index.html.bak"
+  echo '{{ end }}{{ end }}' >>"$site/layouts/index.html"
+  expect fail "broken template refused" -- env SITE_DIR="$site" "$gates" build
+  cp "$work/index.html.bak" "$site/layouts/index.html"
+  expect pass "restored template builds" -- env SITE_DIR="$site" "$gates" build
+elif [ "${REQUIRE_HUGO:-}" = 1 ]; then
+  bad "pinned Hugo unavailable and REQUIRE_HUGO=1"; sed 's/^/    /' "$work/hugo.out"
+else
+  echo "  SKIPPED: pinned Hugo unavailable here (set REQUIRE_HUGO=1 to make this a failure):"
+  sed 's/^/    /' "$work/hugo.out"
+fi
+
 if [ "$fail" -ne 0 ]; then echo "tests/run: FAILED"; exit 1; fi
 echo "tests/run: all passed"

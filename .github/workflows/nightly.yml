@@ -1,0 +1,30 @@
+name: nightly
+
+# The same gates as ci.yml, run against main every night, so a change outside
+# this repository (a Hugo release asset, the theme's remote) shows up before
+# the next pull request does. Run it by hand with workflow_dispatch.
+
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          submodules: recursive
+      - name: Gate self-tests
+        env:
+          REQUIRE_HUGO: '1'
+        run: ./tests/run
+      - name: Gates
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: ./scripts/gates.sh
