@@ -1,0 +1,33 @@
+name: ci
+
+# Runs scripts/gates.sh and its self-tests on every pull request and every
+# push to main. The branch-name gate is left to branch-name.yml, which knows
+# the Dependabot exemption; everything else is the same script a person runs.
+# scripts/gates.sh fetches the Hugo version pinned in netlify.toml and checks
+# it against the release's checksums, so CI, Netlify and a laptop agree.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          submodules: recursive
+      - name: Install the pinned Hugo
+        # Later calls find it in the same cache, so it is fetched once.
+        run: ./scripts/gates.sh ensure-hugo
+      - name: Gate self-tests (each gate shown failing on a planted break)
+        env:
+          REQUIRE_HUGO: '1'
+        run: ./tests/run
+      - name: Gates
+        run: ./scripts/gates.sh build feed no-theme-edit
