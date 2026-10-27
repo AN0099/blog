@@ -1,0 +1,28 @@
+name: labeler
+
+# Adds path labels to a pull request from .github/labeler.yml. The labels
+# match the tiers in docs/risk-tiers.md; a label prompts the reviewer and
+# decides nothing.
+#
+# pull_request_target runs with the base branch's workflow, so a fork's pull
+# request can be labelled. That is safe only because this job never checks
+# out or runs the pull request's code: actions/labeler reads the changed
+# files from the API. Do not add a checkout step.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/labeler@bf12e9b00b37c5c0ca2b87b79b2daf7891dbda13 # v7.0.0
+        with:
+          configuration-path: .github/labeler.yml
+          sync-labels: false

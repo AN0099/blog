@@ -1,0 +1,52 @@
+# Path labels for pull requests, read by .github/workflows/labeler.yml.
+# Each label maps to a tier in docs/risk-tiers.md. A label prompts the
+# reviewer and decides nothing.
+
+content:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'content/**'
+          - 'static/**'
+          - 'archetypes/**'
+
+layouts:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'layouts/**'
+          - 'hugo.toml'
+          - 'netlify.toml'
+
+agent-config:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'AGENTS.md'
+          - 'CLAUDE.md'
+          - 'SECURITY-AI.md'
+          - '.claude/**'
+          - '.cursor/**'
+          - '.github/copilot-instructions.md'
+          - '.humanlayer/**'
+
+gates:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'scripts/**'
+          - 'tests/**'
+          - '.githooks/**'
+
+workflows:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/**'
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '*.md'
+          - 'docs/**'
+
+theme:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'themes/**'
+          - '.gitmodules'

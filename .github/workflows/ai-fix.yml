@@ -1,0 +1,39 @@
+name: ai-fix
+
+# Acknowledges the `ai-fix` label on an issue, once, and routes the issue to
+# a person. No agent runs in CI and no secret is used; the token can only
+# write issues. A fix arrives later as a pull request from an agent session,
+# under the usual review (SECURITY-AI.md). Adapted from toothpaste-kit's and
+# chocolate-factory's ai-fix.yml.
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  issues: write
+
+jobs:
+  route:
+    if: github.event.label.name == 'ai-fix'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Acknowledge once and route
+        # Event data reaches the script through env, never pasted into it.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.issue.number }}
+        run: |
+          marker='<!-- ai-fix-ack -->'
+          # Only the bot's own comments count, so a planted marker cannot
+          # suppress the reply.
+          bodies=$(gh api --paginate "repos/$REPO/issues/$NUMBER/comments" \
+            --jq '.[] | select(.user.login == "github-actions[bot]") | .body')
+          if case "$bodies" in *"$marker"*) true;; *) false;; esac; then
+            echo "already acknowledged"
+            exit 0
+          fi
+          gh issue comment "$NUMBER" --repo "$REPO" --body "$marker
+          Label \`ai-fix\` received. No agent runs in CI here: the issue goes to a person, and any fix arrives as a pull request from an agent session under the usual review. See \`SECURITY-AI.md\`."

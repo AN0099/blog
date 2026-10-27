@@ -1,0 +1,19 @@
+{
+  "about": "Static and compat-only (see AGENTS.md). Records the CI jobs and the timeout policy a tuner would apply; blog runs no tuner and no auto-qa workflow. Change a timeout by editing the workflow and this file in the same pull request.",
+  "policy": {
+    "min_runs": 10,
+    "floor_minutes": 5,
+    "p95_factor": 4,
+    "max_factor": 1.5,
+    "change_ratio": 2,
+    "timeout_ratio": 0.9
+  },
+  "jobs": [
+    {"workflow": "branch-name", "file": ".github/workflows/branch-name.yml", "job": "branch-name"},
+    {"workflow": "ci", "file": ".github/workflows/ci.yml", "job": "gates"},
+    {"workflow": "codeql", "file": ".github/workflows/codeql.yml", "job": "analyze"},
+    {"workflow": "nightly", "file": ".github/workflows/nightly.yml", "job": "gates"},
+    {"workflow": "labeler", "file": ".github/workflows/labeler.yml", "job": "label"},
+    {"workflow": "ai-fix", "file": ".github/workflows/ai-fix.yml", "job": "route"}
+  ]
+}
