@@ -1,0 +1,43 @@
+name: codeql
+
+# CodeQL over the GitHub Actions workflows, the only code CodeQL applies to in
+# this repository (the site is Hugo templates and Markdown). The job is named
+# "Analyze (actions)" because .github/rulesets/main.json requires that check
+# on main. Results go to code scanning, which the ruleset also gates on.
+# This is an advanced setup: CodeQL's default setup must stay off in the
+# repository settings, or GitHub refuses the uploads from this workflow.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '41 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [actions]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+      - uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          category: /language:${{ matrix.language }}
