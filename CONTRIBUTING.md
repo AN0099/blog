@@ -36,7 +36,7 @@ This uses `archetypes/blog.md` and starts as a draft. The post is served at
 Before you push, run:
 
 ```sh
-scripts/gates.sh      # branch name, build, feed, theme untouched
+scripts/gates.sh      # branch name, build, feed, theme untouched, doc links
 tests/run             # proves each gate fails on a planted break
 ```
 

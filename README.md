@@ -37,7 +37,7 @@ change the pin, run `scripts/gates.sh`, and check the deploy preview.
 ## Checks
 
 ```sh
-scripts/gates.sh   # branch name, build, feed, theme untouched
+scripts/gates.sh   # branch name, build, feed, theme untouched, doc links
 tests/run          # shows each gate failing on a planted break
 ```
 

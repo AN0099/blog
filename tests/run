@@ -72,6 +72,31 @@ expect fail "edited theme refused" -- "$gates" no-theme-edit
 rm -f "$top/themes/hugo-bearblog/.planted-by-tests-run"
 expect pass "restored theme accepted" -- "$gates" no-theme-edit
 
+echo "suite: gate docs-links"
+expect pass "repository docs accepted" -- "$gates" docs-links
+# A minimal tree with the pointer files, then one planted break at a time.
+docs=$work/docs
+mkdir -p "$docs/.github" "$docs/.cursor/rules" "$docs/docs"
+printf '# Rules\nSee [the guide](docs/guide.md#top) and [site](https://example.com/).\n' >"$docs/AGENTS.md"
+printf 'Back to [AGENTS.md](../AGENTS.md). In code: `[x](missing.md)`\n' >"$docs/docs/guide.md"
+printf 'Read [AGENTS.md](AGENTS.md).\n' >"$docs/CLAUDE.md"
+printf 'Read [AGENTS.md](../AGENTS.md).\n' >"$docs/.github/copilot-instructions.md"
+printf -- '---\nalwaysApply: true\n---\nRead [AGENTS.md](../../AGENTS.md).\n' >"$docs/.cursor/rules/agents.mdc"
+expect pass "complete docs tree accepted" -- env DOCS_ROOT="$docs" "$gates" docs-links
+cp "$docs/CLAUDE.md" "$work/CLAUDE.md.bak"
+printf 'Read the agent rules.\n' >"$docs/CLAUDE.md"
+expect fail "pointer without AGENTS.md link refused" -- env DOCS_ROOT="$docs" "$gates" docs-links
+rm "$docs/CLAUDE.md"
+expect fail "missing pointer file refused" -- env DOCS_ROOT="$docs" "$gates" docs-links
+cp "$work/CLAUDE.md.bak" "$docs/CLAUDE.md"
+printf 'Read [AGENTS.md](AGENTS.md).\n' >"$docs/.github/copilot-instructions.md"
+expect fail "pointer link that does not resolve refused" -- env DOCS_ROOT="$docs" "$gates" docs-links
+printf 'Read [AGENTS.md](../AGENTS.md).\n' >"$docs/.github/copilot-instructions.md"
+printf 'See [gone](docs/gone.md).\n' >>"$docs/AGENTS.md"
+expect fail "broken relative link refused" -- env DOCS_ROOT="$docs" "$gates" docs-links
+sed -i '$d' "$docs/AGENTS.md"
+expect pass "restored docs tree accepted" -- env DOCS_ROOT="$docs" "$gates" docs-links
+
 echo "suite: ensure-hugo"
 # A fake release served from file://, so no network is needed.
 rel=$work/rel/v0.0.1
