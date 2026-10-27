@@ -1,0 +1,9 @@
+#!/bin/sh
+# The test suite: the branch-name rule, then the agent guard's cases.
+# Phase 2 adds planted-failure suites for scripts/gates.sh here.
+cd "$(dirname "$0")/.." || exit 1
+fail=0
+./scripts/check-branch-name --selftest || fail=1
+./scripts/check-branch-guard || fail=1
+if [ "$fail" -ne 0 ]; then echo "tests/run: FAILED"; exit 1; fi
+echo "tests/run: all passed"

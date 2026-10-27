@@ -1,0 +1,18 @@
+{
+  "disabled": false,
+  "pathTemplate": "~/.humanlayer/workspaces/{{ TASKSLUG }}/{{ REPOBASENAME }}",
+  "branchTemplate": "local/{{ TASKSLUG }}",
+  "sourceRef": "origin/main",
+  "setupCommand": "git config core.hooksPath .githooks",
+  "copyGlobs": [
+    ".claude/settings.local.json",
+    ".humanlayer/workspace.local.json"
+  ],
+  "repos": [
+    {
+      "localPath": ".",
+      "description": "blog, a Hugo site on Netlify using the hugo-bearblog theme as a submodule in themes/hugo-bearblog.",
+      "primary": true
+    }
+  ]
+}

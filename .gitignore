@@ -1,0 +1,14 @@
+
+# Riptide artifacts (cloud-synced)
+.humanlayer/tasks/
+
+# Machine-specific HumanLayer workspace overrides
+.humanlayer/workspace.local.json
+
+# Local Claude settings; copied into every task worktree and may hold credentials
+.claude/settings.local.json
+
+# Hugo build output
+public/
+resources/
+.hugo_build.lock
