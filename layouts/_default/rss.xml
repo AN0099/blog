@@ -1,0 +1,65 @@
+{{- /*
+  Site copy of Hugo 0.167.0's embedded RSS template
+  (tpl/tplimpl/embedded/templates/rss.xml), changed so feed readers get the
+  whole post:
+  - <description> is .Content, not .Summary, with root-relative src="/ and
+    href="/ made absolute against site.BaseURL;
+  - each item names the author in <dc:creator> (params.author.name);
+  - no email is published, so managingEditor, webMaster and <author> are gone.
+  The limit is services.rss.limit in hugo.toml (-1: every post).
+  scripts/gates.sh (gate feed) checks the built feeds are full-content.
+*/ -}}
+{{- $authorName := "" }}
+{{- with site.Params.author }}
+	{{- if reflect.IsMap . }}
+		{{- with .name }}
+			{{- $authorName = . }}
+		{{- end }}
+	{{- else }}
+		{{- $authorName = . }}
+	{{- end }}
+{{- end }}
+
+{{- $absPrefix := printf `${1}="%s` site.BaseURL }}
+
+{{- $pctx := . }}
+{{- if .IsHome }}{{ $pctx = .Site }}{{ end }}
+{{- $pages := slice }}
+{{- if or $.IsHome $.IsSection }}
+	{{- $pages = $pctx.RegularPages }}
+{{- else }}
+	{{- $pages = $pctx.Pages }}
+{{- end }}
+{{- $limit := .Site.Config.Services.RSS.Limit }}
+{{- if ge $limit 1 }}
+	{{- $pages = $pages | first $limit }}
+{{- end }}
+{{- printf "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>" | safeHTML }}
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/">
+	<channel>
+		<title>{{ if eq .Title .Site.Title }}{{ .Site.Title }}{{ else }}{{ with .Title }}{{ . }} on {{ end }}{{ .Site.Title }}{{ end }}</title>
+		<link>{{ .Permalink }}</link>
+		<description>Recent content {{ if ne .Title .Site.Title }}{{ with .Title }}in {{ . }} {{ end }}{{ end }}on {{ .Site.Title }}</description>
+		<generator>Hugo</generator>
+		<language>{{ site.Language.Locale }}</language>
+		{{ with .Site.Copyright }}
+			<copyright>{{ . }}</copyright>
+		{{ end }}
+		{{ if not .Date.IsZero }}
+			<lastBuildDate>{{ (index $pages.ByLastmod.Reverse 0).Lastmod.Format "Mon, 02 Jan 2006 15:04:05 -0700" | safeHTML }}</lastBuildDate>
+		{{ end }}
+		{{- with .OutputFormats.Get "RSS" }}
+			{{ printf "<atom:link href=%q rel=\"self\" type=%q />" .Permalink .MediaType | safeHTML }}
+		{{- end }}
+		{{- range $pages }}
+			<item>
+				<title>{{ .Title }}</title>
+				<link>{{ .Permalink }}</link>
+				<pubDate>{{ .PublishDate.Format "Mon, 02 Jan 2006 15:04:05 -0700" | safeHTML }}</pubDate>
+				{{- with $authorName }}<dc:creator>{{ . }}</dc:creator>{{ end }}
+				<guid>{{ .Permalink }}</guid>
+				<description>{{ .Content | replaceRE `(src|href)="/([^/])` (printf `%s${2}` $absPrefix) | transform.XMLEscape | safeHTML }}</description>
+			</item>
+		{{- end }}
+	</channel>
+</rss>
