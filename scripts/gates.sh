@@ -13,10 +13,14 @@
 #   feed           public/index.xml and public/blog/index.xml parse as RSS and
 #                  every item carries the full post, with absolute links
 #   no-theme-edit  themes/hugo-bearblog is clean and its gitlink is THEME_PIN
+#   docs-links     CLAUDE.md, .github/copilot-instructions.md and
+#                  .cursor/rules/agents.mdc link to AGENTS.md, and every
+#                  relative link in the repository's Markdown resolves
 #
 # Environment (mostly for tests/run; none needed in normal use):
 #   BRANCH             name to check instead of the current branch
 #   SITE_DIR           site to build (default: the repository root)
+#   DOCS_ROOT          tree whose documents docs-links checks (default: repo root)
 #   FEED_FILE          single feed to check (default: the two feeds above)
 #   FEED_PUBLIC        built site the feed's item links resolve into
 #                      (default: $SITE_DIR/public)
@@ -186,6 +190,51 @@ gate_no_theme_edit() {
   fi
 }
 
+gate_docs_links() {
+  python3 -I - "${DOCS_ROOT:-$top}" <<'EOF'
+# AGENTS.md holds the agent rules and the pointer files only point to it, so
+# each pointer must link to AGENTS.md. Every relative Markdown link in the
+# repository's documents (root *.md, docs/, .github/, .cursor/rules/) must
+# resolve to a file or directory. Links inside code are not links.
+import os, re, sys
+
+root = sys.argv[1]
+POINTERS = ["CLAUDE.md", ".github/copilot-instructions.md", ".cursor/rules/agents.mdc"]
+LINK = re.compile(r"!?\[[^\]]*\]\(\s*<?([^)\s>]+)>?(?:\s+\"[^\"]*\")?\s*\)")
+bad = []
+
+docs = [f for f in os.listdir(root) if f.endswith(".md") and os.path.isfile(os.path.join(root, f))]
+for sub in ("docs", ".github", ".cursor/rules"):
+    for d, _, files in os.walk(os.path.join(root, sub)):
+        docs += [os.path.relpath(os.path.join(d, f), root) for f in files if f.endswith((".md", ".mdc"))]
+
+def links(path):
+    text = open(os.path.join(root, path), encoding="utf-8").read()
+    text = re.sub(r"(?ms)^\s*(```|~~~).*?^\s*\1[^\n]*$", "", text)  # fenced code
+    text = re.sub(r"`[^`\n]*`", "", text)                             # inline code
+    text = re.sub(r"(?s)<!--.*?-->", "", text)                        # comments
+    return LINK.findall(text)
+
+if not os.path.isfile(os.path.join(root, "AGENTS.md")):
+    bad.append("AGENTS.md is missing")
+for p in POINTERS:
+    if not os.path.isfile(os.path.join(root, p)):
+        bad.append("%s is missing" % p)
+    elif not any(os.path.basename(t.split("#")[0]) == "AGENTS.md" for t in links(p)):
+        bad.append("%s does not link to AGENTS.md" % p)
+for path in sorted(set(docs)):
+    for target in links(path):
+        if re.match(r"^([a-z][a-z0-9+.-]*:|#|/)", target, re.I):
+            continue  # external, in-page, or site-absolute
+        rel = target.split("#")[0].split("?")[0]
+        dest = os.path.normpath(os.path.join(root, os.path.dirname(path), rel))
+        if not os.path.exists(dest):
+            bad.append("%s: link to %s does not resolve" % (path, target))
+if bad:
+    sys.exit("gates: documentation links are broken:\n  " + "\n  ".join(bad))
+EOF
+}
+
 run_gate() {
   case "$1" in
     ensure-hugo)   ensure_hugo ;;
@@ -193,11 +242,12 @@ run_gate() {
     build)         gate_build ;;
     feed)          gate_feed ;;
     no-theme-edit) gate_no_theme_edit ;;
+    docs-links)    gate_docs_links ;;
     *) err "unknown gate '$1'"; return 2 ;;
   esac
 }
 
-[ "$#" -eq 0 ] && set -- branch-name build feed no-theme-edit
+[ "$#" -eq 0 ] && set -- branch-name build feed no-theme-edit docs-links
 fail=0
 for g in "$@"; do
   if run_gate "$g"; then say "$g: pass"; else say "$g: FAIL"; fail=1; fi

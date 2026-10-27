@@ -30,4 +30,4 @@ jobs:
           REQUIRE_HUGO: '1'
         run: ./tests/run
       - name: Gates
-        run: ./scripts/gates.sh build feed no-theme-edit
+        run: ./scripts/gates.sh build feed no-theme-edit docs-links
