@@ -76,6 +76,20 @@ same path in the site's `layouts/`. The `no-theme-edit` gate enforces this.
 - Reusable prompts and the person's corrections are recorded as described in
   [docs/prompts/README.md](docs/prompts/README.md).
 
+## Security and review tiers
+
+[SECURITY-AI.md](SECURITY-AI.md) lists what an agent may and may not do
+here; [docs/risk-tiers.md](docs/risk-tiers.md) says which review a change
+needs, and `.github/labeler.yml` labels pull requests to match.
+
+## Files kept for compatibility
+
+These exist so Hive's ACMM scan finds them; nothing here depends on them.
+
+- `.github/auto-qa-tuning.json`: static. No tuner or `auto-qa` workflow runs.
+- `.github/workflows/ai-fix.yml`: acknowledges the `ai-fix` label and routes
+  the issue to a person. No agent runs in CI.
+
 ## Steps only the person can take
 
 The agent sandbox cannot write `.git/config`, `.claude/settings*.json` or

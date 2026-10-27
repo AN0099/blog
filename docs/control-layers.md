@@ -10,7 +10,7 @@ script) and every layer calls that definition, so the layers cannot disagree.
 | 1. Instructions | [AGENTS.md](../AGENTS.md), [CONTRIBUTING.md](../CONTRIBUTING.md) | An agent or person who reads first | Not reading them |
 | 2. Agent guard | `.claude/hookify.branch-name-guard.local.md` | An agent about to run a forbidden command | Agents without the guard |
 | 3. Local hook | `.githooks/pre-push` (after `git config core.hooksPath .githooks`) | A bad push from this clone | A clone without the hook set |
-| 4. CI | `.github/workflows/{branch-name,ci,codeql,nightly}.yml` | A PR that breaks a gate | Nothing, once checks are required |
+| 4. CI | `.github/workflows/{branch-name,ci,codeql,nightly,labeler,ai-fix}.yml` | A PR that breaks a gate | Nothing, once checks are required |
 | 5. GitHub rulesets | `.github/rulesets/{branch-names,main}.json`, applied in GitHub | Bad branch names, unsigned or unchecked merges, force pushes | Repository admins only |
 | 6. Review | [docs/review-rubric.md](review-rubric.md) | What no script can judge | The person merging |
 
