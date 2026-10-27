@@ -1,0 +1,53 @@
+name: branch-name
+
+# Fails any pull request, branch push or tag push whose name
+# scripts/check-branch-name rejects. By the time this runs the name is already
+# public, so this is the backstop and not the prevention: the pre-push hook
+# and the server-side ruleset stop a name before it is published. This check
+# keeps such a branch from merging and makes the miss visible.
+# It binds only when set as a required status check on main.
+
+on:
+  pull_request:
+  push:
+    branches: ['**']
+    tags: ['**']
+
+permissions:
+  contents: read
+
+jobs:
+  branch-name:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Selftest the rule
+        run: ./scripts/check-branch-name --selftest
+      - name: Test the agent guard against its cases
+        run: ./scripts/check-branch-guard
+      - name: Check this ref's name
+        # Names reach the script through env, never pasted into the command,
+        # so a crafted branch name cannot inject shell.
+        env:
+          EVENT: ${{ github.event_name }}
+          HEAD_REF: ${{ github.head_ref }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          # Dependabot names its branches from dependency files, not from
+          # requests. Only the Dependabot app is exempt, and only on its own
+          # prefix; the ruleset bypasses for it alone (app id 29110).
+          name=$HEAD_REF; [ "$EVENT" = pull_request ] || name=$REF_NAME
+          case "$ACTOR:$name" in
+            'dependabot[bot]:dependabot/'*) echo "Dependabot branch, exempt"; exit 0 ;;
+          esac
+          if [ "$EVENT" = pull_request ]; then
+            ./scripts/check-branch-name "$HEAD_REF"
+          elif [ "$REF_TYPE" = tag ]; then
+            ./scripts/check-branch-name --tag "$REF_NAME"
+          else
+            ./scripts/check-branch-name "$REF_NAME"
+          fi
