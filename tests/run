@@ -113,6 +113,13 @@ if [ -e "$work/cache-bad/hugo" ]; then bad "mismatched binary was unpacked"; els
 (cd "$rel" && sha256sum "$asset") >"$rel/hugo_0.0.1_checksums.txt"
 expect pass "matching checksum installs" -- fake good
 if [ -x "$work/cache-good/hugo" ]; then ok "binary unpacked into cache"; else bad "binary missing from cache"; fi
+expect fail "unreachable release refused" -- env HUGO_VERSION=0.0.1 HUGO_RELEASES_URL="file://$work/no-such-releases" HUGO_CACHE="$work/cache-none" "$gates" ensure-hugo
+echo "0000000000000000000000000000000000000000000000000000000000000000  some-other-asset.tar.gz" >"$rel/hugo_0.0.1_checksums.txt"
+expect fail "asset missing from the checksums refused" -- fake unlisted
+if [ -e "$work/cache-unlisted/hugo" ]; then bad "unlisted binary was unpacked"; else ok "unlisted binary not unpacked"; fi
+
+echo "suite: gate dispatcher"
+expect fail "unknown gate refused" -- "$gates" no-such-gate
 
 echo "suite: gate build"
 if "$gates" ensure-hugo >"$work/hugo.out" 2>&1; then
