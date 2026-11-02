@@ -7,3 +7,15 @@
 
 [build.environment]
   HUGO_VERSION = "0.167.0"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    # The site uses no CDN assets or third-party scripts; 'unsafe-inline'
+    # is required because the hugo-bearblog theme inlines its CSS via a
+    # <style> partial (layouts/partials/style.html).
+    Content-Security-Policy = "default-src 'self'; style-src 'self' 'unsafe-inline'"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
