@@ -72,6 +72,34 @@ expect fail "edited theme refused" -- "$gates" no-theme-edit
 rm -f "$top/themes/hugo-bearblog/.planted-by-tests-run"
 expect pass "restored theme accepted" -- "$gates" no-theme-edit
 
+# The pin and checkout refusals run against a throwaway repository: a copy of
+# the gate whose pin is a theme commit made here, so the real theme is untouched.
+tt=$work/theme-repo
+mkdir -p "$tt/scripts"
+cp "$gates" "$tt/scripts/gates.sh"
+git init -q "$work/theme-src"
+git -C "$work/theme-src" -c user.name=t -c user.email=t@example.invalid commit -q --allow-empty -m one
+git -C "$work/theme-src" -c user.name=t -c user.email=t@example.invalid commit -q --allow-empty -m two
+pin=$(git -C "$work/theme-src" rev-parse HEAD~1)
+other=$(git -C "$work/theme-src" rev-parse HEAD)
+sed "s/^THEME_PIN=.*/THEME_PIN=$pin/" "$tt/scripts/gates.sh" >"$tt/scripts/gates.new" && mv "$tt/scripts/gates.new" "$tt/scripts/gates.sh"
+chmod +x "$tt/scripts/gates.sh"
+git init -q "$tt"
+git clone -q "$work/theme-src" "$tt/themes/hugo-bearblog"
+git -C "$tt/themes/hugo-bearblog" checkout -q "$pin"
+git -C "$tt" update-index --add --cacheinfo "160000,$pin,themes/hugo-bearblog"
+tgate=$tt/scripts/gates.sh
+expect pass "throwaway repo at the pin accepted" -- "$tgate" no-theme-edit
+git -C "$tt" update-index --cacheinfo "160000,$other,themes/hugo-bearblog"
+expect fail "gitlink moved off the pin refused" -- "$tgate" no-theme-edit
+git -C "$tt" update-index --force-remove themes/hugo-bearblog
+expect fail "missing gitlink refused" -- "$tgate" no-theme-edit
+git -C "$tt" update-index --add --cacheinfo "160000,$pin,themes/hugo-bearblog"
+git -C "$tt/themes/hugo-bearblog" checkout -q "$other"
+expect fail "theme checked out off the pin refused" -- "$tgate" no-theme-edit
+git -C "$tt/themes/hugo-bearblog" checkout -q "$pin"
+expect pass "theme back on the pin accepted" -- "$tgate" no-theme-edit
+
 echo "suite: gate docs-links"
 expect pass "repository docs accepted" -- "$gates" docs-links
 # A minimal tree with the pointer files, then one planted break at a time.
